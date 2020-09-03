@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block extra_html_head %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/fixedcolumns/3.2.6/css/fixedColumns.bootstrap4.min.css"/>
+{% endblock %}
+
+{% block buttons %}
+{% if sessions %}
+<h5>В оформлении</h5>
+{% endif %}
+{% endblock %}
+
+{% block obj-data %}
+{% if sessions %}
+<table class="table rh-table table-hover" id="main-table">
+<thead>
+    <tr>
+        <th>№</th>
+        <th>Телефон</th>
+        <th>Гражданство</th>
+        <th>Фото</th>
+    </tr>
+</thead>
+<tbody>
+    {% for session in sessions %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ session.phone }}</td>
+        <td>{{ session.citizenship }}</td>
+        <td><a href="{% url 'the_redhuman_is:photo_load_session_sort' session.pk session.content_type %}" target="_blank">фото</a></td>
+    </tr>
+    {% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+{% if newbies %}
+<h5>Оформлены, без выходов (новички)</h5>
+<table class="table rh-table table-hover" id="main-table">
+<thead>
+    <tr>
+        <th>№</th>
+        <th>Рабочий</th>
+        <th>Гражданство</th>
+        <th>Телефон</th>
+        {% if request.user.is_superuser %}
+        <th></th>
+        {% endif %}
+    </tr>
+</thead>
+<tbody>
+    {% for worker in newbies %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'the_redhuman_is:worker_detail' worker.pk %}" target="_blank">{{ worker }}</a></td>
+        <td>{{ worker.citizenship }}</td>
+        <td>{{ worker.tel_number }}</td>
+        {% if request.user.is_superuser %}
+        <td>
+            <form method="POST" action="{% url 'the_redhuman_is:delivery_ban_worker' %}">
+                {% csrf_token %}
+                <input type="hidden" name="worker" value="{{ worker.pk }}"/>
+                <button type="submit">забанить</button>
+            </form>
+        </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+<h5>Оформлены, с выходами</h5>
+<table id="workers_table" class="table rh-table table-hover" id="main-table">
+<thead>
+    <tr>
+        <th>№</th>
+        <th>Рабочий</th>
+        <th>Гражданство</th>
+        <th>Телефон</th>
+        <th>Первый выход</th>
+        <th>Последний выход</th>
+        <th>Отдыхает?</th>
+        <th></th>
+        {% if request.user.is_superuser %}
+        <th></th>
+        {% endif %}
+    </tr>
+</thead>
+<tbody>
+    {% for worker in workers %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td><a href="{% url 'the_redhuman_is:worker_detail' worker.pk %}" target="_blank">{{ worker }}</a></td>
+        <td>{{ worker.citizenship }}</td>
+        <td>{{ worker.tel_number }}</td>
+        <td class="text-center">{{ worker.first_day|date:'d.m.y' }}</td>
+        <td class="text-center">{{ worker.last_day|date:'d.m.y' }}</td>
+        <td>{% if worker.on_vacation %}отдыхает{% else %}работает{% endif %}</td>
+        <td>
+            <form method="POST" action="{% url 'the_redhuman_is:delivery_toggle_worker_vacation' %}">
+                {% csrf_token %}
+                <input type="hidden" name="worker" value="{{ worker.pk }}"/>
+                <button type="submit">{% if worker.on_vacation %}работать{% else %}отдыхать{% endif %}</button>
+            </form>
+        </td>
+        {% if request.user.is_superuser %}
+        <td>
+            <form method="POST" action="{% url 'the_redhuman_is:delivery_ban_worker' %}">
+                {% csrf_token %}
+                <input type="hidden" name="worker" value="{{ worker.pk }}"/>
+                <button type="submit">забанить</button>
+            </form>
+        </td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/fixedcolumns/3.2.6/js/dataTables.fixedColumns.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/plug-ins/1.10.19/sorting/datetime-moment.js"></script>
+
+<script>
+$(document).ready(
+    function () {
+        $.fn.dataTable.moment('DD.MM.YY');
+        $('#workers_table').DataTable({
+            "pageLength": 50,
+            "order": [],
+            "lengthMenu": [[100, 20, -1], [100, 20, "Все"]],
+            "stateSave": true,
+            "searching": false,
+            "info": false,
+            "paging": false,
+            "oLanguage": {
+                "sLengthMenu": "Отображено _MENU_ записей на страницу",
+                "sSearch": "Поиск:",
+                "sZeroRecords": "Ничего не найдено - извините",
+                "sInfo": "Показано с _START_ по _END_ из _TOTAL_ записей",
+                "sInfoEmpty": "Показано с 0 по 0 из 0 записей",
+                "sInfoFiltered": "(filtered from _MAX_ total records)",
+                "oPaginate": {
+                    "sFirst": "Первая",
+                    "sNext": ">",
+                    "sPrevious": "<",
+                    "sLast": "Последняя",
+                },
+            },
+        });
+    }
+);
+</script>
+{% endblock %}
